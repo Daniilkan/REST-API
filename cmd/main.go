@@ -77,5 +77,4 @@ func main() {
 		logger.GetLoggerFromContext(ctx).Fatal(ctx, "failed to start server", zap.Error(err))
 		return
 	}
-	logger.GetLoggerFromContext(ctx).Info(ctx, "Server started")
 }
