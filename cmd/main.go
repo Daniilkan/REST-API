@@ -7,7 +7,7 @@ package main
 // @BasePath /
 
 import (
-	_ "TestRest/cmd/docs"
+	_ "TestRest/docs"
 	"TestRest/internal/config"
 	"TestRest/internal/handlers"
 	"TestRest/pkg/logger"
