@@ -73,5 +73,9 @@ func main() {
 	router.Post("/post", handlers.InsertPerson)
 	router.Put("/put", handlers.UpdatePerson)
 
-	http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.RESTHost, cfg.RESTPort), router)
+	if err = http.ListenAndServe(fmt.Sprintf("%s:%d", cfg.RESTHost, cfg.RESTPort), router); err != nil {
+		logger.GetLoggerFromContext(ctx).Fatal(ctx, "failed to start server", zap.Error(err))
+		return
+	}
+	logger.GetLoggerFromContext(ctx).Info(ctx, "Server started")
 }
