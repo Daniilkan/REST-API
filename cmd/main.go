@@ -50,7 +50,7 @@ func main() {
 	logger.GetLoggerFromContext(ctx).Info(ctx, "Database connected")
 	defer db.Close()
 
-	if err := migrations.RunMigrations(db, "./pkg/migrations", *cfg); err != nil {
+	if err = migrations.RunMigrations(db, "./pkg/migrations", *cfg); err != nil {
 		logger.GetLoggerFromContext(ctx).Fatal(ctx, "failed to run migrations", zap.Error(err))
 		return
 	}

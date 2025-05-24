@@ -5,5 +5,5 @@ CREATE TABLE people (
                         patronymic VARCHAR(100),
                         age INT NOT NULL,
                         nationality VARCHAR(100) NOT NULL,
-                        gender VARCHAR(10) NOT NULL
+                        gender CHAR(1) NOT NULL
 );

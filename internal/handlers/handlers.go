@@ -4,12 +4,12 @@ package handlers
 // It includes handlers for CRUD operations on the "people" table and initializes the database connection for handlers.
 
 import (
+	"TestRest/external"
 	"TestRest/pkg/postgres"
 	"context"
 	"encoding/json"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
-	"strconv"
 )
 
 var db *pgxpool.Pool
@@ -22,7 +22,7 @@ func InitHandlers(database *pgxpool.Pool, context context.Context) {
 
 // GetInfo retrieves a person's information by ID.
 // @Summary Get person info
-// @Description Get a person's details by their ID
+// @Description GetInfo Get a person's details by their ID
 // @Tags people
 // @Accept json
 // @Produce json
@@ -32,16 +32,21 @@ func InitHandlers(database *pgxpool.Pool, context context.Context) {
 // @Failure 500 {string} string "Failed to get person"
 // @Router /get [get]
 func GetInfo(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-
-	idStr := params.Get("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid id parameter"))
+	var params struct {
+		ID          int    `json:"id"`
+		Name        string `json:"name"`
+		Surname     string `json:"surname"`
+		Patronymic  string `json:"patronymic"`
+		Age         int    `json:"age"`
+		Gender      string `json:"gender"`
+		Nationality string `json:"nationality"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	person, err := postgres.GetPerson(ctx, db, id)
+
+	person, err := postgres.GetPerson(ctx, db, params.ID, params.Name, params.Surname, params.Patronymic, params.Age, params.Gender, params.Nationality)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to get person"))
@@ -62,7 +67,7 @@ func GetInfo(w http.ResponseWriter, r *http.Request) {
 
 // DeletePerson deletes a person by ID.
 // @Summary Delete person
-// @Description Delete a person by their ID
+// @Description DeletePerson Delete a person by their ID
 // @Tags people
 // @Param id query int true "Person ID"
 // @Success 200 {string} string "Deleted person by ID"
@@ -70,17 +75,25 @@ func GetInfo(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Failed to delete person"
 // @Router /delete [delete]
 func DeletePerson(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-
-	idStr := params.Get("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid id parameter"))
+	var params struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	err = postgres.DeletePerson(ctx, db, id)
+	_, err := postgres.GetPerson(ctx, db, params.ID, "", "", "", 0, "", "")
+	if err != nil {
+		if err.Error() == "no person found" {
+			http.Error(w, "Person not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to retrieve person", http.StatusInternalServerError)
+		return
+	}
+
+	err = postgres.DeletePerson(ctx, db, params.ID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to delete person"))
@@ -88,12 +101,12 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Deleted person by id: " + idStr))
+	w.Write([]byte("Deleted person by id: " + string(params.ID)))
 }
 
 // InsertPerson inserts a new person into the database.
 // @Summary Insert person
-// @Description Add a new person to the database
+// @Description InsertPerson Add a new person to the database
 // @Tags people
 // @Param name query string true "Person's name"
 // @Param surname query string true "Person's surname"
@@ -102,16 +115,42 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Failed to insert person"
 // @Router /post [post]
 func InsertPerson(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
+	var params struct {
+		Name       string `json:"name"`
+		Surname    string `json:"surname"`
+		Patronymic string `json:"patronymic"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-	name := params.Get("name")
-	surname := params.Get("surname")
-	patronymic := params.Get("patronymic")
-
-	person, err := postgres.InsertPerson(ctx, db, name, surname, patronymic)
+	name := params.Name
+	surname := params.Surname
+	patronymic := params.Patronymic
+	age, err := external.GetAge(name)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to insert person"))
+		w.Write([]byte("Failed to insert person - unable to fetch age"))
+		return
+	}
+	gender, err := external.GetGender(name)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to insert person - unable to fetch gender"))
+		return
+	}
+	nationality, err := external.GetNationality(name)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to insert person - unable to fetch nationality"))
+		return
+	}
+
+	person, err := postgres.InsertPerson(ctx, db, name, surname, patronymic, age, gender, nationality)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to insert person - error in database"))
 		return
 	}
 
@@ -129,7 +168,7 @@ func InsertPerson(w http.ResponseWriter, r *http.Request) {
 
 // UpdatePerson updates an existing person's information.
 // @Summary Update person
-// @Description Update a person's details by their ID
+// @Description UpdatePerson Update a person's details by their ID
 // @Tags people
 // @Param id query int true "Person ID"
 // @Param name query string true "Person's name"
@@ -140,28 +179,69 @@ func InsertPerson(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Failed to update person"
 // @Router /put [put]
 func UpdatePerson(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-
-	idStr := params.Get("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid id parameter"))
+	var params struct {
+		ID          int    `json:"id"`
+		Name        string `json:"name"`
+		Surname     string `json:"surname"`
+		Patronymic  string `json:"patronymic"`
+		Age         int    `json:"age"`
+		Gender      string `json:"gender"`
+		Nationality string `json:"nationality"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	name := params.Get("name")
-	surname := params.Get("surname")
-	patronymic := params.Get("patronymic")
+	id := params.ID
 
-	person, err := postgres.UpdatePerson(ctx, db, id, name, surname, patronymic)
+	persons, err := postgres.GetPerson(ctx, db, id, "", "", "", 0, "", "")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to retrieve person"))
+		return
+	}
+
+	if len(persons) != 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid ID or multiple persons found"))
+		return
+	}
+	p := persons[0]
+
+	name := params.Name
+	if name == "" {
+		name = p.Name
+	}
+	surname := params.Surname
+	if surname == "" {
+		surname = p.Surname
+	}
+	patronymic := params.Patronymic
+	if patronymic == "" {
+		patronymic = p.Patronymic
+	}
+	age := params.Age
+	if age == 0 {
+		age = p.Age
+	}
+	gender := params.Gender
+	if gender == "" {
+		gender = p.Gender
+	}
+	nationality := params.Nationality
+	if nationality == "" {
+		nationality = p.Nationality
+	}
+
+	updatedPerson, err := postgres.UpdatePerson(ctx, db, id, name, surname, patronymic, age, gender, nationality)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to update person"))
 		return
 	}
 
-	response, err := json.Marshal(person)
+	response, err := json.Marshal(updatedPerson)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to process person data"))

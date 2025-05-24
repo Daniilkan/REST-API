@@ -15,32 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/config/new": {
-            "get": {
-                "description": "Loads the application configuration from environment variables or YAML files.",
-                "tags": [
-                    "config"
-                ],
-                "summary": "Initialize configuration",
-                "responses": {
-                    "200": {
-                        "description": "Application configuration",
-                        "schema": {
-                            "$ref": "#/definitions/TestRest_internal_config.Config"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to load configuration",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/delete": {
             "delete": {
-                "description": "Delete a person by their ID",
+                "description": "DeletePerson Delete a person by their ID",
                 "tags": [
                     "people"
                 ],
@@ -76,105 +53,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/external/age": {
-            "get": {
-                "description": "GetAge fetches the estimated age for a given name using the Agify API.",
-                "tags": [
-                    "external"
-                ],
-                "summary": "Get estimated age",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name to estimate age for",
-                        "name": "name",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Estimated age",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch age",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/external/gender": {
-            "get": {
-                "description": "GetGender fetches the gender for a given name using the Genderize API.",
-                "tags": [
-                    "external"
-                ],
-                "summary": "Get gender",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name to fetch gender for",
-                        "name": "name",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Gender",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch gender",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/external/nationality": {
-            "get": {
-                "description": "GetNationality fetches the nationality for a given name using the Nationalize API.",
-                "tags": [
-                    "external"
-                ],
-                "summary": "Get nationality",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Name to fetch nationality for",
-                        "name": "name",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Nationality",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to fetch nationality",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/get": {
             "get": {
-                "description": "Get a person's details by their ID",
+                "description": "GetInfo Get a person's details by their ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -198,7 +79,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/TestRest_pkg_postgres.Person"
+                            "$ref": "#/definitions/postgres.Person"
                         }
                     },
                     "400": {
@@ -218,7 +99,7 @@ const docTemplate = `{
         },
         "/post": {
             "post": {
-                "description": "Add a new person to the database",
+                "description": "InsertPerson Add a new person to the database",
                 "tags": [
                     "people"
                 ],
@@ -249,200 +130,11 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/TestRest_pkg_postgres.Person"
+                            "$ref": "#/definitions/postgres.Person"
                         }
                     },
                     "500": {
                         "description": "Failed to insert person",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/postgres/new": {
-            "post": {
-                "description": "New initializes a new PostgreSQL connection pool using the provided configuration.",
-                "tags": [
-                    "postgres"
-                ],
-                "summary": "Create PostgreSQL connection pool",
-                "parameters": [
-                    {
-                        "description": "PostgreSQL configuration",
-                        "name": "config",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_postgres.Config"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Database connection pool",
-                        "schema": {
-                            "$ref": "#/definitions/pgxpool.Pool"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to create connection pool",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/postgres/person": {
-            "get": {
-                "description": "GetPerson fetches a person's details from the database by their ID.",
-                "tags": [
-                    "postgres"
-                ],
-                "summary": "Get person",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Person ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Person details",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_postgres.Person"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to retrieve person",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "UpdatePerson updates a person's details in the database by their ID.",
-                "tags": [
-                    "postgres"
-                ],
-                "summary": "Update person",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Person ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Person's name",
-                        "name": "name",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Person's surname",
-                        "name": "surname",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Person's patronymic",
-                        "name": "patronymic",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Updated person",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_postgres.Person"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update person",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "InsertPerson adds a new person to the database with details fetched from external APIs.",
-                "tags": [
-                    "postgres"
-                ],
-                "summary": "Insert person",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Person's name",
-                        "name": "name",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Person's surname",
-                        "name": "surname",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Person's patronymic",
-                        "name": "patronymic",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Inserted person",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_postgres.Person"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to insert person",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "DeletePerson removes a person from the database by their ID.",
-                "tags": [
-                    "postgres"
-                ],
-                "summary": "Delete person",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Person ID",
-                        "name": "id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Person deleted",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to delete person",
                         "schema": {
                             "type": "string"
                         }
@@ -452,7 +144,7 @@ const docTemplate = `{
         },
         "/put": {
             "put": {
-                "description": "Update a person's details by their ID",
+                "description": "UpdatePerson Update a person's details by their ID",
                 "tags": [
                     "people"
                 ],
@@ -490,7 +182,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/TestRest_pkg_postgres.Person"
+                            "$ref": "#/definitions/postgres.Person"
                         }
                     },
                     "400": {
@@ -510,118 +202,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "TestRest_internal_config.Config": {
-            "type": "object",
-            "properties": {
-                "postgres": {
-                    "$ref": "#/definitions/TestRest_pkg_postgres.Config"
-                },
-                "resthost": {
-                    "type": "string"
-                },
-                "restport": {
-                    "type": "integer"
-                }
-            }
-        },
-        "TestRest_pkg_postgres.Config": {
-            "type": "object",
-            "properties": {
-                "database": {
-                    "type": "string"
-                },
-                "host": {
-                    "type": "string"
-                },
-                "maxConns": {
-                    "type": "integer"
-                },
-                "minConns": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "port": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "TestRest_pkg_postgres.Person": {
-            "description": "Person entity",
-            "type": "object",
-            "properties": {
-                "age": {
-                    "type": "integer"
-                },
-                "gender": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nationality": {
-                    "type": "string"
-                },
-                "patronymic": {
-                    "type": "string"
-                },
-                "surname": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_config.Config": {
-            "type": "object",
-            "properties": {
-                "postgres": {
-                    "$ref": "#/definitions/TestRest_pkg_postgres.Config"
-                },
-                "resthost": {
-                    "type": "string"
-                },
-                "restport": {
-                    "type": "integer"
-                }
-            }
-        },
-        "pgxpool.Pool": {
-            "type": "object"
-        },
-        "pkg_postgres.Config": {
-            "type": "object",
-            "properties": {
-                "database": {
-                    "type": "string"
-                },
-                "host": {
-                    "type": "string"
-                },
-                "maxConns": {
-                    "type": "integer"
-                },
-                "minConns": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "port": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "pkg_postgres.Person": {
-            "description": "Person entity",
+        "postgres.Person": {
             "type": "object",
             "properties": {
                 "age": {

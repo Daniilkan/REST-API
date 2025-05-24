@@ -1,13 +1,12 @@
 package postgres
 
-// Package postgres provides database connection management and CRUD operations for the "people" table.
-// It includes functions for inserting, retrieving, updating, and deleting records.
-
 import (
-	"TestRest/external"
+	"TestRest/pkg/logger"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+	"strings"
 )
 
 type Config struct {
@@ -21,14 +20,6 @@ type Config struct {
 	MaxConns int32 `yaml:"max_conns" env:"MAX_CONNS" env-default:"10"`
 }
 
-// New creates a new PostgreSQL connection pool.
-// @Summary Create PostgreSQL connection pool
-// @Description New initializes a new PostgreSQL connection pool using the provided configuration.
-// @Tags postgres
-// @Param config body postgres.Config true "PostgreSQL configuration"
-// @Success 200 {object} pgxpool.Pool "Database connection pool"
-// @Failure 500 {string} string "Failed to create connection pool"
-// @Router /postgres/new [post]
 func New(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		config.Username,
@@ -53,16 +44,6 @@ func New(ctx context.Context, config Config) (*pgxpool.Pool, error) {
 	return conn, nil
 }
 
-// Person represents a person entity in the database.
-// @Description Person entity
-// @ID Person
-// @Param id int true "Person ID"
-// @Param name string true "Person's name"
-// @Param surname string true "Person's surname"
-// @Param patronymic string false "Person's patronymic"
-// @Param age int true "Person's age"
-// @Param nationality string true "Person's nationality"
-// @Param gender string true "Person's gender"
 type Person struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`
@@ -73,78 +54,95 @@ type Person struct {
 	Gender      string `json:"gender"`
 }
 
-// InsertPerson inserts a new person into the database.
-// @Summary Insert person
-// @Description InsertPerson adds a new person to the database with details fetched from external APIs.
-// @Tags postgres
-// @Param name query string true "Person's name"
-// @Param surname query string true "Person's surname"
-// @Param patronymic query string false "Person's patronymic"
-// @Success 200 {object} postgres.Person "Inserted person"
-// @Failure 500 {string} string "Failed to insert person"
-// @Router /postgres/person [post]
-func InsertPerson(ctx context.Context, db *pgxpool.Pool, name string, surname string, patronymic string) (*Person, error) {
-	age, err := external.GetAge(name)
-	if err != nil {
-		return nil, err
-	}
-
-	gender, err := external.GetGender(name)
-	if err != nil {
-		return nil, err
-	}
-
-	nationality, err := external.GetNationality(name)
-	if err != nil {
-		return nil, err
-	}
-
+func InsertPerson(ctx context.Context, db *pgxpool.Pool, name string, surname string, patronymic string, age int, gender string, nationality string) (*Person, error) {
 	var person Person
 	query := `
 		INSERT INTO people (name, surname, patronymic, age, nationality, gender)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, name, surname, patronymic, age, nationality, gender
 	`
-	err = db.QueryRow(ctx, query, name, surname, patronymic, age, nationality, gender).Scan(
+	err := db.QueryRow(ctx, query, name, surname, patronymic, age, nationality, gender).Scan(
 		&person.ID, &person.Name, &person.Surname, &person.Patronymic, &person.Age, &person.Nationality, &person.Gender,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert and retrieve person: %w", err)
 	}
 
+	logger.GetLoggerFromContext(ctx).Info(ctx, "Inserted person", zap.Int("id", person.ID), zap.String("name", person.Name), zap.String("surname", person.Surname), zap.String("patronymic", person.Patronymic), zap.Int("age", age), zap.String("gender", gender), zap.String("nationality", nationality))
 	return &person, nil
 }
 
-// GetPerson retrieves a person's details by ID.
-// @Summary Get person
-// @Description GetPerson fetches a person's details from the database by their ID.
-// @Tags postgres
-// @Param id query int true "Person ID"
-// @Success 200 {object} postgres.Person "Person details"
-// @Failure 500 {string} string "Failed to retrieve person"
-// @Router /postgres/person [get]
-func GetPerson(ctx context.Context, db *pgxpool.Pool, id int) (*Person, error) {
+func GetPerson(ctx context.Context, db *pgxpool.Pool, id int, name, surname, patronymic string, age int, gender, nationality string) ([]Person, error) {
 	query := `
 		SELECT id, name, surname, patronymic, age, nationality, gender
 		FROM people
-		WHERE id = $1
 	`
-	var p Person
-	err := db.QueryRow(ctx, query, id).Scan(&p.ID, &p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Nationality, &p.Gender)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve person: %w", err)
+	conditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
+
+	if id != 0 {
+		conditions = append(conditions, fmt.Sprintf("id = $%d", argIndex))
+		args = append(args, id)
+		argIndex++
 	}
-	return &p, nil
+	if name != "" {
+		conditions = append(conditions, fmt.Sprintf("name = $%d", argIndex))
+		args = append(args, name)
+		argIndex++
+	}
+	if surname != "" {
+		conditions = append(conditions, fmt.Sprintf("surname = $%d", argIndex))
+		args = append(args, surname)
+		argIndex++
+	}
+	if patronymic != "" {
+		conditions = append(conditions, fmt.Sprintf("patronymic = $%d", argIndex))
+		args = append(args, patronymic)
+		argIndex++
+	}
+	if age != 0 {
+		conditions = append(conditions, fmt.Sprintf("age = $%d", argIndex))
+		args = append(args, age)
+		argIndex++
+	}
+	if gender != "" {
+		conditions = append(conditions, fmt.Sprintf("gender = $%d", argIndex))
+		args = append(args, gender)
+		argIndex++
+	}
+	if nationality != "" {
+		conditions = append(conditions, fmt.Sprintf("nationality = $%d", argIndex))
+		args = append(args, nationality)
+		argIndex++
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	rows, err := db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve persons: %w", err)
+	}
+	defer rows.Close()
+
+	var persons []Person
+	for rows.Next() {
+		var p Person
+		if err := rows.Scan(&p.ID, &p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Nationality, &p.Gender); err != nil {
+			return nil, fmt.Errorf("failed to scan person: %w", err)
+		}
+		persons = append(persons, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %w", err)
+	}
+	logger.GetLoggerFromContext(ctx).Info(ctx, "Retrieved persons", zap.Int("count", len(persons)), zap.Any("persons", persons))
+	return persons, nil
 }
 
-// DeletePerson deletes a person from the database by ID.
-// @Summary Delete person
-// @Description DeletePerson removes a person from the database by their ID.
-// @Tags postgres
-// @Param id query int true "Person ID"
-// @Success 200 {string} string "Person deleted"
-// @Failure 500 {string} string "Failed to delete person"
-// @Router /postgres/person [delete]
 func DeletePerson(ctx context.Context, db *pgxpool.Pool, id int) error {
 	query := `
 		DELETE FROM people
@@ -154,31 +152,22 @@ func DeletePerson(ctx context.Context, db *pgxpool.Pool, id int) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete person: %w", err)
 	}
+	logger.GetLoggerFromContext(ctx).Info(ctx, "Deleted person", zap.Int("id", id))
 	return nil
 }
 
-// UpdatePerson updates a person's details in the database.
-// @Summary Update person
-// @Description UpdatePerson updates a person's details in the database by their ID.
-// @Tags postgres
-// @Param id query int true "Person ID"
-// @Param name query string true "Person's name"
-// @Param surname query string true "Person's surname"
-// @Param patronymic query string false "Person's patronymic"
-// @Success 200 {object} postgres.Person "Updated person"
-// @Failure 500 {string} string "Failed to update person"
-// @Router /postgres/person [put]
-func UpdatePerson(ctx context.Context, db *pgxpool.Pool, id int, name, surname, patronymic string) (*Person, error) {
+func UpdatePerson(ctx context.Context, db *pgxpool.Pool, id int, name, surname, patronymic string, age int, gender string, nationality string) (*Person, error) {
 	query := `
 		UPDATE people
-		SET name = $1, surname = $2, patronymic = $3
-		WHERE id = $4
+		SET name = $1, surname = $2, patronymic = $3, age = $4, gender = $5, nationality = $6
+		WHERE id = $7
 		RETURNING id, name, surname, patronymic, age, nationality, gender
 	`
 	var p Person
-	err := db.QueryRow(ctx, query, name, surname, patronymic, id).Scan(&p.ID, &p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Nationality, &p.Gender)
+	err := db.QueryRow(ctx, query, name, surname, patronymic, age, gender, nationality, id).Scan(&p.ID, &p.Name, &p.Surname, &p.Patronymic, &p.Age, &p.Nationality, &p.Gender)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update person: %w", err)
 	}
+	logger.GetLoggerFromContext(ctx).Info(ctx, "Updated person", zap.Int("id", p.ID), zap.String("name", p.Name), zap.String("surname", p.Surname), zap.String("patronymic", p.Patronymic), zap.Int("age", age), zap.String("gender", gender), zap.String("nationality", nationality))
 	return &p, nil
 }

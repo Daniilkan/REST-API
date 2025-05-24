@@ -1,79 +1,6 @@
 basePath: /
 definitions:
-  TestRest_internal_config.Config:
-    properties:
-      postgres:
-        $ref: '#/definitions/TestRest_pkg_postgres.Config'
-      resthost:
-        type: string
-      restport:
-        type: integer
-    type: object
-  TestRest_pkg_postgres.Config:
-    properties:
-      database:
-        type: string
-      host:
-        type: string
-      maxConns:
-        type: integer
-      minConns:
-        type: integer
-      password:
-        type: string
-      port:
-        type: integer
-      username:
-        type: string
-    type: object
-  TestRest_pkg_postgres.Person:
-    description: Person entity
-    properties:
-      age:
-        type: integer
-      gender:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      nationality:
-        type: string
-      patronymic:
-        type: string
-      surname:
-        type: string
-    type: object
-  internal_config.Config:
-    properties:
-      postgres:
-        $ref: '#/definitions/TestRest_pkg_postgres.Config'
-      resthost:
-        type: string
-      restport:
-        type: integer
-    type: object
-  pgxpool.Pool:
-    type: object
-  pkg_postgres.Config:
-    properties:
-      database:
-        type: string
-      host:
-        type: string
-      maxConns:
-        type: integer
-      minConns:
-        type: integer
-      password:
-        type: string
-      port:
-        type: integer
-      username:
-        type: string
-    type: object
-  pkg_postgres.Person:
-    description: Person entity
+  postgres.Person:
     properties:
       age:
         type: integer
@@ -97,25 +24,9 @@ info:
   title: TestRest API
   version: "1.0"
 paths:
-  /config/new:
-    get:
-      description: Loads the application configuration from environment variables
-        or YAML files.
-      responses:
-        "200":
-          description: Application configuration
-          schema:
-            $ref: '#/definitions/TestRest_internal_config.Config'
-        "500":
-          description: Failed to load configuration
-          schema:
-            type: string
-      summary: Initialize configuration
-      tags:
-      - config
   /delete:
     delete:
-      description: Delete a person by their ID
+      description: DeletePerson Delete a person by their ID
       parameters:
       - description: Person ID
         in: query
@@ -138,77 +49,11 @@ paths:
       summary: Delete person
       tags:
       - people
-  /external/age:
-    get:
-      description: GetAge fetches the estimated age for a given name using the Agify
-        API.
-      parameters:
-      - description: Name to estimate age for
-        in: query
-        name: name
-        required: true
-        type: string
-      responses:
-        "200":
-          description: Estimated age
-          schema:
-            type: integer
-        "500":
-          description: Failed to fetch age
-          schema:
-            type: string
-      summary: Get estimated age
-      tags:
-      - external
-  /external/gender:
-    get:
-      description: GetGender fetches the gender for a given name using the Genderize
-        API.
-      parameters:
-      - description: Name to fetch gender for
-        in: query
-        name: name
-        required: true
-        type: string
-      responses:
-        "200":
-          description: Gender
-          schema:
-            type: string
-        "500":
-          description: Failed to fetch gender
-          schema:
-            type: string
-      summary: Get gender
-      tags:
-      - external
-  /external/nationality:
-    get:
-      description: GetNationality fetches the nationality for a given name using the
-        Nationalize API.
-      parameters:
-      - description: Name to fetch nationality for
-        in: query
-        name: name
-        required: true
-        type: string
-      responses:
-        "200":
-          description: Nationality
-          schema:
-            type: string
-        "500":
-          description: Failed to fetch nationality
-          schema:
-            type: string
-      summary: Get nationality
-      tags:
-      - external
   /get:
     get:
       consumes:
       - application/json
-      description: Get a person's details by their ID
+      description: GetInfo Get a person's details by their ID
       parameters:
       - description: Person ID
         in: query
@@ -221,7 +66,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/TestRest_pkg_postgres.Person'
+            $ref: '#/definitions/postgres.Person'
         "400":
           description: Invalid ID parameter
           schema:
@@ -235,7 +80,7 @@ paths:
       - people
   /post:
     post:
-      description: Add a new person to the database
+      description: InsertPerson Add a new person to the database
       parameters:
       - description: Person's name
         in: query
@@ -255,7 +100,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/TestRest_pkg_postgres.Person'
+            $ref: '#/definitions/postgres.Person'
         "500":
           description: Failed to insert person
           schema:
@@ -263,139 +108,9 @@ paths:
       summary: Insert person
       tags:
       - people
-  /postgres/new:
-    post:
-      description: New initializes a new PostgreSQL connection pool using the provided
-        configuration.
-      parameters:
-      - description: PostgreSQL configuration
-        in: body
-        name: config
-        required: true
-        schema:
-          $ref: '#/definitions/pkg_postgres.Config'
-      responses:
-        "200":
-          description: Database connection pool
-          schema:
-            $ref: '#/definitions/pgxpool.Pool'
-        "500":
-          description: Failed to create connection pool
-          schema:
-            type: string
-      summary: Create PostgreSQL connection pool
-      tags:
-      - postgres
-  /postgres/person:
-    delete:
-      description: DeletePerson removes a person from the database by their ID.
-      parameters:
-      - description: Person ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: Person deleted
-          schema:
-            type: string
-        "500":
-          description: Failed to delete person
-          schema:
-            type: string
-      summary: Delete person
-      tags:
-      - postgres
-    get:
-      description: GetPerson fetches a person's details from the database by their
-        ID.
-      parameters:
-      - description: Person ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: Person details
-          schema:
-            $ref: '#/definitions/pkg_postgres.Person'
-        "500":
-          description: Failed to retrieve person
-          schema:
-            type: string
-      summary: Get person
-      tags:
-      - postgres
-    post:
-      description: InsertPerson adds a new person to the database with details fetched
-        from external APIs.
-      parameters:
-      - description: Person's name
-        in: query
-        name: name
-        required: true
-        type: string
-      - description: Person's surname
-        in: query
-        name: surname
-        required: true
-        type: string
-      - description: Person's patronymic
-        in: query
-        name: patronymic
-        type: string
-      responses:
-        "200":
-          description: Inserted person
-          schema:
-            $ref: '#/definitions/pkg_postgres.Person'
-        "500":
-          description: Failed to insert person
-          schema:
-            type: string
-      summary: Insert person
-      tags:
-      - postgres
-    put:
-      description: UpdatePerson updates a person's details in the database by their
-        ID.
-      parameters:
-      - description: Person ID
-        in: query
-        name: id
-        required: true
-        type: integer
-      - description: Person's name
-        in: query
-        name: name
-        required: true
-        type: string
-      - description: Person's surname
-        in: query
-        name: surname
-        required: true
-        type: string
-      - description: Person's patronymic
-        in: query
-        name: patronymic
-        type: string
-      responses:
-        "200":
-          description: Updated person
-          schema:
-            $ref: '#/definitions/pkg_postgres.Person'
-        "500":
-          description: Failed to update person
-          schema:
-            type: string
-      summary: Update person
-      tags:
-      - postgres
   /put:
     put:
-      description: Update a person's details by their ID
+      description: UpdatePerson Update a person's details by their ID
       parameters:
       - description: Person ID
         in: query
@@ -420,7 +135,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/TestRest_pkg_postgres.Person'
+            $ref: '#/definitions/postgres.Person'
         "400":
           description: Invalid ID parameter
           schema:
